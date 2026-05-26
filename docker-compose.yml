@@ -1,0 +1,11 @@
+services:
+  inference-api:
+    build:
+      context: ./apps/inference-api
+    environment:
+      MODEL_PATH: /app/artifacts/model.json
+      PORT: "8080"
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    ports:
+      - "8080:8080"
