@@ -1,0 +1,14 @@
+# Local artifacts
+artifacts/*.json
+!artifacts/.gitkeep
+data/samples/*.csv
+data/samples/*.json
+!data/samples/.gitkeep
+
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+
+# Go
+*.test
