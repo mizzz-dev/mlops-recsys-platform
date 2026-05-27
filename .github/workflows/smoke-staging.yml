@@ -1,0 +1,111 @@
+name: Smoke staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_url:
+        description: 'Cloud Run staging service URL, for example https://example.run.app'
+        required: true
+        type: string
+      use_identity_token:
+        description: 'Use gcloud identity token for authenticated Cloud Run requests'
+        required: false
+        default: true
+        type: boolean
+      run_k6:
+        description: 'Run k6 smoke load test after endpoint checks'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  smoke-staging:
+    name: Smoke test staging
+    runs-on: ubuntu-latest
+    environment: staging
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        if: ${{ inputs.use_identity_token }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        if: ${{ inputs.use_identity_token }}
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Resolve request auth
+        id: auth
+        run: |
+          if [ "${{ inputs.use_identity_token }}" = "true" ]; then
+            ID_TOKEN=$(gcloud auth print-identity-token)
+            echo "id_token=${ID_TOKEN}" >> "$GITHUB_OUTPUT"
+            echo "AUTH_HEADER=Authorization: Bearer ${ID_TOKEN}" >> "$GITHUB_ENV"
+            echo "ID_TOKEN=${ID_TOKEN}" >> "$GITHUB_ENV"
+          else
+            echo "AUTH_HEADER=" >> "$GITHUB_ENV"
+            echo "ID_TOKEN=" >> "$GITHUB_ENV"
+          fi
+
+      - name: Check healthz
+        run: |
+          if [ -n "${AUTH_HEADER}" ]; then
+            curl -fsS -H "${AUTH_HEADER}" "${{ inputs.service_url }}/healthz"
+          else
+            curl -fsS "${{ inputs.service_url }}/healthz"
+          fi
+
+      - name: Check readyz
+        run: |
+          if [ -n "${AUTH_HEADER}" ]; then
+            curl -fsS -H "${AUTH_HEADER}" "${{ inputs.service_url }}/readyz"
+          else
+            curl -fsS "${{ inputs.service_url }}/readyz"
+          fi
+
+      - name: Check recommendation API
+        run: |
+          if [ -n "${AUTH_HEADER}" ]; then
+            RESPONSE=$(curl -fsS -H "${AUTH_HEADER}" "${{ inputs.service_url }}/v1/recommendations?user_id=user_001&limit=3")
+          else
+            RESPONSE=$(curl -fsS "${{ inputs.service_url }}/v1/recommendations?user_id=user_001&limit=3")
+          fi
+          echo "${RESPONSE}"
+          echo "${RESPONSE}" | python3 -m json.tool >/dev/null
+          echo "${RESPONSE}" | grep 'strategy'
+          echo "${RESPONSE}" | grep 'recommendations'
+
+      - name: Set up k6
+        if: ${{ inputs.run_k6 }}
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 smoke test
+        if: ${{ inputs.run_k6 }}
+        run: k6 run loadtests/k6/recommendation_api.js
+        env:
+          BASE_URL: ${{ inputs.service_url }}
+          ID_TOKEN: ${{ env.ID_TOKEN }}
+
+      - name: Write smoke test summary
+        run: |
+          {
+            echo "## Staging smoke test"
+            echo ""
+            echo "Service URL: ${{ inputs.service_url }}"
+            echo ""
+            echo "Checks:"
+            echo "- /healthz"
+            echo "- /readyz"
+            echo "- /v1/recommendations"
+            echo "- k6 smoke test: ${{ inputs.run_k6 }}"
+            echo ""
+            echo "Rollback guide: docs/rollback.md"
+          } >> "$GITHUB_STEP_SUMMARY"
