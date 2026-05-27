@@ -1,8 +1,9 @@
 SHELL := /bin/bash
 API_DIR := apps/inference-api
 PYTHON := python3
+BASE_URL ?= http://localhost:8080
 
-.PHONY: help test go-test py-test train run-api request-sample compile-pipeline docker-build clean
+.PHONY: help test go-test py-test train run-api request-sample compile-pipeline docker-build loadtest clean
 
 help:
 	@echo "Available commands:"
@@ -12,6 +13,7 @@ help:
 	@echo "  make request-sample    Call recommendation endpoint"
 	@echo "  make compile-pipeline  Compile local pipeline spec"
 	@echo "  make docker-build      Build inference API Docker image"
+	@echo "  make loadtest          Run k6 smoke load test against BASE_URL"
 	@echo "  make clean             Remove generated local artifacts"
 
 test: go-test py-test compile-pipeline
@@ -29,13 +31,16 @@ run-api:
 	cd $(API_DIR) && MODEL_PATH=../../artifacts/model.json go run ./cmd/server
 
 request-sample:
-	curl -s 'http://localhost:8080/v1/recommendations?user_id=user_001&limit=3' | $(PYTHON) -m json.tool
+	curl -s '$(BASE_URL)/v1/recommendations?user_id=user_001&limit=3' | $(PYTHON) -m json.tool
 
 compile-pipeline:
 	$(PYTHON) pipelines/training/pipeline.py --compile --output artifacts/pipeline.json
 
 docker-build:
 	docker build -t mlops-recsys-inference-api:local $(API_DIR)
+
+loadtest:
+	BASE_URL=$(BASE_URL) k6 run loadtests/k6/recommendation_api.js
 
 clean:
 	rm -f artifacts/model.json artifacts/pipeline.json data/samples/events.csv data/samples/features.json

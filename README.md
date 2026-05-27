@@ -14,7 +14,9 @@
 - Pythonによる合成データ生成、特徴量生成、学習、評価、モデル保存
 - モデル未ロード時にもAPIを落とさないfallback設計
 - GitHub ActionsによるGo/Python/Docker/pipeline compileのCI
-- Runbook、ADR、architectureを含む運用前提のドキュメント
+- k6による推薦APIの負荷試験
+- Cloud Runを想定したデプロイ設計とTerraform雛形
+- Runbook、障害訓練、ADR、architectureを含む運用前提のドキュメント
 
 ## MVPスコープ
 
@@ -30,6 +32,7 @@
 - モデル未ロード時のfallback推薦
 - ローカル実行用Makefile
 - CI
+- smoke負荷試験
 
 ### 対象外
 
@@ -48,6 +51,7 @@ ml/                   Python製のデータ生成・学習・評価処理
 pipelines/training/   学習パイプライン定義とcompileスクリプト
 data/                 サンプルデータとスキーマ
 loadtests/k6/         負荷試験スクリプト
+infra/terraform/      Cloud Run想定のTerraform雛形
 docs/                 要件、設計、運用、ADR
 .github/workflows/    CI
 ```
@@ -71,6 +75,32 @@ curl 'http://localhost:8080/v1/recommendations?user_id=user_001&limit=3'
 
 モデルが存在しない場合もAPIは落ちず、`strategy: fallback_popular` で返します。
 
+## 負荷試験
+
+APIを起動した状態で以下を実行します。
+
+```bash
+make loadtest
+```
+
+別URLに対して実行する場合は `BASE_URL` を指定します。
+
+```bash
+make loadtest BASE_URL=https://example.run.app
+```
+
+smoke負荷試験では以下を確認します。
+
+- HTTP error rate < 1%
+- p95 latency < 300ms
+- 推薦レスポンスに `strategy` と `recommendations` が含まれること
+
+## Cloud Runデプロイ設計
+
+MVPでは実デプロイまでは対象外とし、`infra/terraform` にCloud Runを想定した最小構成の雛形を置いています。
+
+詳細は `docs/deployment.md` を参照してください。
+
 ## 主要コマンド
 
 ```bash
@@ -81,4 +111,5 @@ make run-api
 make request-sample
 make compile-pipeline
 make docker-build
+make loadtest
 ```
