@@ -103,6 +103,8 @@ MVPでは実デプロイまでは対象外とし、`infra/terraform` にCloud Ru
 
 - `docs/deployment.md`
 - `docs/gcp-setup.md`
+- `docs/staging-release.md`
+- `docs/artifact-registry.md`
 - `docs/rollback.md`
 
 ## 主要コマンド
