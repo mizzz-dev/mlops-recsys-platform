@@ -99,7 +99,11 @@ smoke負荷試験では以下を確認します。
 
 MVPでは実デプロイまでは対象外とし、`infra/terraform` にCloud Runを想定した最小構成の雛形を置いています。
 
-詳細は `docs/deployment.md` を参照してください。
+詳細は以下を参照してください。
+
+- `docs/deployment.md`
+- `docs/gcp-setup.md`
+- `docs/rollback.md`
 
 ## 主要コマンド
 
