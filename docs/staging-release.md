@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide connects the image publish workflow and the staging deploy workflow.
+This guide connects the image publish workflow, staging deploy workflow, and staging smoke test workflow.
 
 The release is intentionally manual. This keeps the portfolio safe by default and makes each operational step reviewable.
 
@@ -14,7 +14,7 @@ The release is intentionally manual. This keeps the portfolio safe by default an
 3. Run Publish inference API image
 4. Copy the published image URI
 5. Run Deploy staging with that image URI
-6. Verify health, readiness, recommendation response, and smoke load test
+6. Run Smoke staging with the deployed service URL
 7. Roll back if the verification fails
 ```
 
@@ -55,19 +55,26 @@ Inputs:
 | `image` | Yes | Image URI copied from the publish workflow summary. |
 | `service_name` | No | Cloud Run staging service name. |
 
-## Step 3: Verify staging
+## Step 3: Smoke test staging
 
-After deployment, get the service URL from the workflow output or from gcloud.
+Open GitHub Actions and run:
 
-```bash
-SERVICE_URL=$(gcloud run services describe mlops-recsys-inference-api-staging \
-  --region asia-northeast1 \
-  --format 'value(status.url)')
+```text
+Smoke staging
+```
 
-curl -s "$SERVICE_URL/healthz"
-curl -s "$SERVICE_URL/readyz"
-curl -s "$SERVICE_URL/v1/recommendations?user_id=user_001&limit=3"
-make loadtest BASE_URL="$SERVICE_URL"
+Inputs:
+
+| Name | Required | Description |
+|---|---:|---|
+| `service_url` | Yes | Cloud Run staging service URL. |
+| `use_identity_token` | No | Use identity token for private Cloud Run services. |
+| `run_k6` | No | Run k6 smoke load test. |
+
+For details, see:
+
+```text
+docs/staging-smoke-test.md
 ```
 
 ## Acceptance criteria
@@ -75,7 +82,7 @@ make loadtest BASE_URL="$SERVICE_URL"
 - `/healthz` returns 200
 - `/readyz` returns 200 and model state is visible
 - recommendation API returns `strategy` and `recommendations`
-- smoke load test passes
+- smoke load test passes when enabled
 - unexpected fallback increase is not observed
 
 ## Rollback
