@@ -65,5 +65,19 @@ jobs:
       - name: Push image
         run: docker push "${IMAGE_URI}"
 
+      - name: Write release summary
+        run: |
+          {
+            echo "## Published image"
+            echo ""
+            echo "Use this image URI as the \`image\` input for the \`Deploy staging\` workflow."
+            echo ""
+            echo "\`\`\`text"
+            echo "${IMAGE_URI}"
+            echo "\`\`\`"
+            echo ""
+            echo "Next guide: \`docs/staging-release.md\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Print image URI for deploy-staging
         run: echo "Published image: ${IMAGE_URI}"
