@@ -1,0 +1,63 @@
+name: Deploy staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Container image URI to deploy to Cloud Run staging'
+        required: true
+        type: string
+      service_name:
+        description: 'Cloud Run service name'
+        required: false
+        default: 'mlops-recsys-inference-api-staging'
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION || 'asia-northeast1' }}
+
+jobs:
+  deploy-staging:
+    name: Deploy to Cloud Run staging
+    runs-on: ubuntu-latest
+    environment: staging
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate required inputs and secrets
+        run: |
+          test -n "${{ inputs.image }}"
+          test -n "${GCP_PROJECT_ID}"
+          test -n "${GCP_REGION}"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Cloud Run service
+        run: |
+          gcloud run deploy "${{ inputs.service_name }}" \
+            --project "${GCP_PROJECT_ID}" \
+            --region "${GCP_REGION}" \
+            --image "${{ inputs.image }}" \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --set-env-vars MODEL_PATH=/app/artifacts/model.json
+
+      - name: Show service URL
+        run: |
+          gcloud run services describe "${{ inputs.service_name }}" \
+            --project "${GCP_PROJECT_ID}" \
+            --region "${GCP_REGION}" \
+            --format 'value(status.url)'
