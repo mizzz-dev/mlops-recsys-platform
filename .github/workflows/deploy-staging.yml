@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image:
-        description: 'Container image URI to deploy to Cloud Run staging'
+        description: 'Image URI from the Publish inference API image workflow summary'
         required: true
         type: string
       service_name:
@@ -56,8 +56,29 @@ jobs:
             --set-env-vars MODEL_PATH=/app/artifacts/model.json
 
       - name: Show service URL
+        id: service
         run: |
-          gcloud run services describe "${{ inputs.service_name }}" \
+          SERVICE_URL=$(gcloud run services describe "${{ inputs.service_name }}" \
             --project "${GCP_PROJECT_ID}" \
             --region "${GCP_REGION}" \
-            --format 'value(status.url)'
+            --format 'value(status.url)')
+          echo "service_url=${SERVICE_URL}" >> "$GITHUB_OUTPUT"
+          echo "${SERVICE_URL}"
+
+      - name: Write staging release summary
+        run: |
+          {
+            echo "## Staging deployment"
+            echo ""
+            echo "Service: \`${{ inputs.service_name }}\`"
+            echo ""
+            echo "Image:"
+            echo "\`\`\`text"
+            echo "${{ inputs.image }}"
+            echo "\`\`\`"
+            echo ""
+            echo "Service URL: ${{ steps.service.outputs.service_url }}"
+            echo ""
+            echo "Verification guide: \`docs/staging-release.md\`"
+            echo "Rollback guide: \`docs/rollback.md\`"
+          } >> "$GITHUB_STEP_SUMMARY"
