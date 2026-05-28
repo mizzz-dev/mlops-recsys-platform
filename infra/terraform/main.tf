@@ -3,12 +3,19 @@ resource "google_cloud_run_v2_service" "inference_api" {
   location = var.region
 
   template {
+    service_account = var.cloud_run_runtime_service_account == "" ? null : var.cloud_run_runtime_service_account
+
     containers {
       image = var.image
 
       env {
         name  = "MODEL_PATH"
         value = var.model_path
+      }
+
+      env {
+        name  = "MODEL_URI"
+        value = var.model_uri
       }
 
       ports {
