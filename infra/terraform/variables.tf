@@ -26,6 +26,24 @@ variable "model_path" {
   default     = "/app/artifacts/model.json"
 }
 
+variable "model_uri" {
+  description = "Optional model artifact URI for future startup download. Example: gs://bucket/models/model.json."
+  type        = string
+  default     = ""
+}
+
+variable "model_artifact_bucket_name" {
+  description = "GCS bucket name for model artifacts. Leave empty to use the generated default name."
+  type        = string
+  default     = ""
+}
+
+variable "cloud_run_runtime_service_account" {
+  description = "Cloud Run runtime service account email. If empty, Cloud Run uses the platform default."
+  type        = string
+  default     = ""
+}
+
 variable "allow_unauthenticated" {
   description = "Whether to allow unauthenticated invocation. Keep false for production."
   type        = bool
