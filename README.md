@@ -106,6 +106,7 @@ MVPでは実デプロイまでは対象外とし、`infra/terraform` にCloud Ru
 - `docs/staging-release.md`
 - `docs/staging-smoke-test.md`
 - `docs/artifact-registry.md`
+- `docs/model-artifact-storage.md`
 - `docs/rollback.md`
 
 ## 主要コマンド
